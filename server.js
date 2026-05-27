@@ -21,9 +21,9 @@ const CONFIG = {
 
   // Trading
   UP_SHARES_PER_BUY:   20,          // shares per UP order
-  UP_INTERVAL_SEC:     10,          // every 10 seconds
+  UP_INTERVAL_SEC:     15,          // every 15 seconds
   DOWN_SHARES_PER_BUY: 40,          // shares per DOWN order
-  DOWN_INTERVAL_SEC:   20,          // every 20 seconds
+  DOWN_INTERVAL_SEC:   25,          // every 25 seconds
   STOP_BUYING_SEC:     280,         // stop at 4m40s = 280 seconds into window
   WINDOW_SEC:          300,         // 5 minutes
   TAKE_PROFIT:         0.99,
@@ -401,18 +401,23 @@ async function refreshPrices(asset) {
     // Check TP for active window
     const win = state.activeWindows[asset];
     if (win && win.status === 'BUYING') {
-      if (data.up >= CONFIG.TAKE_PROFIT && win.up.totalShares > 0) {
+      // Bug fix: guard with !win.tpHit so TP only fires once, not on every price refresh
+      if (!win.tpHit && data.up >= CONFIG.TAKE_PROFIT && win.up.totalShares > 0) {
         win.tpHit = 'UP';
-        const profit = win.up.totalShares * CONFIG.TAKE_PROFIT - win.up.totalCost;
+        const tpReturn = win.up.totalShares * CONFIG.TAKE_PROFIT;
+        const profit = tpReturn - win.up.totalCost;
         win.pnl += profit;
-        state.capital += win.up.totalShares * CONFIG.TAKE_PROFIT;
+        win._tpCapitalReturned = tpReturn; // track so resolution doesn't double-count
+        state.capital += tpReturn;
         log('info', `🎯 TP HIT UP for ${asset.toUpperCase()}! Profit: $${profit.toFixed(2)}`);
       }
-      if (data.down >= CONFIG.TAKE_PROFIT && win.down.totalShares > 0) {
+      if (!win.tpHit && data.down >= CONFIG.TAKE_PROFIT && win.down.totalShares > 0) {
         win.tpHit = 'DOWN';
-        const profit = win.down.totalShares * CONFIG.TAKE_PROFIT - win.down.totalCost;
+        const tpReturn = win.down.totalShares * CONFIG.TAKE_PROFIT;
+        const profit = tpReturn - win.down.totalCost;
         win.pnl += profit;
-        state.capital += win.down.totalShares * CONFIG.TAKE_PROFIT;
+        win._tpCapitalReturned = tpReturn; // track so resolution doesn't double-count
+        state.capital += tpReturn;
         log('info', `🎯 TP HIT DOWN for ${asset.toUpperCase()}! Profit: $${profit.toFixed(2)}`);
       }
     }
@@ -454,7 +459,11 @@ async function checkAllResolutions() {
     const totalSpent = winLeg.totalCost + loseLeg.totalCost;
 
     win.pnl = winReturn - totalSpent;
-    state.capital += winReturn;
+
+    // Bug fix: if TP already returned capital for the winning leg's shares, subtract
+    // that amount so we only add the delta (avoids double-counting)
+    const alreadyReturned = win._tpCapitalReturned || 0;
+    state.capital += winReturn - alreadyReturned;
 
     log('info', `✅ RESOLVED ${win.asset.toUpperCase()} → ${result} | PnL: ${win.pnl >= 0 ? '+' : ''}$${win.pnl.toFixed(2)}`, {
       winShares: winLeg.totalShares,

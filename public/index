@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>POLYMARKET 5M BOT</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:    #040810;
+  --bg2:   #070d1a;
+  --bg3:   #0b1422;
+  --card:  #090f1e;
+  --b1:    #152035;
+  --b2:    #1e2f4a;
+  --cyan:  #00e5ff;
+  --green: #00ff87;
+  --red:   #ff3060;
+  --gold:  #ffd600;
+  --purp:  #7c3aed;
+  --orng:  #ff6b35;
+  --txt:   #e2e8f0;
+  --txt2:  #8899aa;
+  --txt3:  #445566;
+  --mono:  'Space Mono', monospace;
+  --disp:  'Syne', sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--txt);font-family:var(--mono);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);background-size:36px 36px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 15%,rgba(0,229,255,.05) 0,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(124,58,237,.05) 0,transparent 55%);pointer-events:none;z-index:0}
+#root{position:relative;z-index:1}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--b1);background:rgba(4,8,16,.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-box{width:34px;height:34px;background:linear-gradient(135deg,var(--cyan),var(--purp));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.logo-name{font-family:var(--disp);font-size:18px;font-weight:800;letter-spacing:-.5px}
+.logo-sub{font-size:9px;letter-spacing:3px;color:var(--cyan);margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.pill{display:flex;align-items:center;gap:6px;padding:5px 13px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:1px;border:1px solid}
+.pill.demo{border-color:var(--gold);color:var(--gold);background:rgba(255,214,0,.08)}
+.pill.live{border-color:var(--green);color:var(--green);background:rgba(0,255,135,.08)}
+.pill.conn{border-color:var(--txt3);color:var(--txt3)}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* WINDOW TIMER BAR */
+.timer-bar-wrap{width:100%;background:var(--b1);height:3px;position:relative}
+.timer-bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--purp));transition:width .5s linear}
+.timer-bar-danger{background:linear-gradient(90deg,var(--gold),var(--red))}
+
+/* MAIN */
+main{padding:20px 24px;max-width:1700px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+
+/* CAPITAL STRIP */
+.cap-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+@media(max-width:1200px){.cap-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.cap-row{grid-template-columns:repeat(2,1fr)}}
+.cap-card{background:var(--card);border:1px solid var(--b1);border-radius:13px;padding:15px 17px;position:relative;overflow:hidden}
+.cap-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:13px 13px 0 0}
+.cap-card.c1::before{background:linear-gradient(90deg,var(--cyan),var(--purp))}
+.cap-card.c2::before{background:var(--gold)}
+.cap-card.c3::before{background:var(--green)}
+.cap-card.c4::before{background:var(--red)}
+.cap-card.c5::before{background:var(--purp)}
+.cap-card.c6::before{background:var(--orng)}
+.cap-lbl{font-size:9px;color:var(--txt3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.cap-val{font-family:var(--disp);font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1;transition:color .3s}
+.cap-sub{font-size:10px;color:var(--txt3);margin-top:5px}
+.pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--txt2)}
+
+/* WINDOW COUNTDOWN */
+.countdown-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.countdown-row{grid-template-columns:1fr}}
+.countdown-card{background:var(--card);border:1px solid var(--b1);border-radius:13px;overflow:hidden}
+.countdown-header{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--b1);background:var(--bg2)}
+.countdown-title{font-family:var(--disp);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.asset-badge{padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:1px}
+.asset-badge.btc{background:rgba(255,150,0,.15);color:#ff9600;border:1px solid rgba(255,150,0,.3)}
+.asset-badge.eth{background:rgba(124,58,237,.15);color:var(--purp);border:1px solid rgba(124,58,237,.3)}
+.window-timer{font-family:var(--disp);font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.window-timer.danger{color:var(--red)}
+.window-timer.warning{color:var(--gold)}
+.window-timer.ok{color:var(--cyan)}
+
+/* PRICE DISPLAY */
+.price-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px}
+.price-box{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:12px 14px;text-align:center}
+.price-dir{font-size:9px;letter-spacing:2px;font-weight:700;margin-bottom:6px}
+.price-dir.up{color:var(--green)}.price-dir.down{color:var(--red)}
+.price-num{font-family:var(--disp);font-size:28px;font-weight:800;letter-spacing:-.5px}
+.price-num.up{color:var(--green)}.price-num.down{color:var(--red)}
+.price-change{font-size:9px;color:var(--txt3);margin-top:3px}
+
+/* SHARES TABLE */
+.shares-section{padding:0 16px 14px}
+.shares-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.shares-leg{background:var(--bg2);border-radius:9px;border:1px solid var(--b1);padding:11px 13px}
+.shares-leg.up-leg{border-top:2px solid var(--green)}
+.shares-leg.down-leg{border-top:2px solid var(--red)}
+.leg-title{font-size:9px;letter-spacing:2px;font-weight:700;margin-bottom:9px}
+.leg-title.up{color:var(--green)}.leg-title.down{color:var(--red)}
+.leg-stat{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-bottom:1px solid var(--b1)}
+.leg-stat:last-child{border:none}
+.leg-key{color:var(--txt3)}.leg-val{color:var(--txt);font-weight:700}
+.leg-val.green{color:var(--green)}.leg-val.red{color:var(--red)}
+
+/* ORDER COUNT BADGES */
+.order-badges{display:flex;gap:6px;padding:0 16px 14px}
+.ob{padding:4px 12px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:.5px}
+.ob.up{background:rgba(0,255,135,.12);color:var(--green);border:1px solid rgba(0,255,135,.25)}
+.ob.down{background:rgba(255,48,96,.12);color:var(--red);border:1px solid rgba(255,48,96,.25)}
+
+/* BUY STATUS */
+.buy-status{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--b1);font-size:10px;color:var(--txt3)}
+.buy-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1s infinite}
+.buy-dot.stopped{background:var(--txt3);animation:none}
+
+/* MAIN CONTENT GRID */
+.content-grid{display:grid;grid-template-columns:1fr 340px;gap:16px}
+@media(max-width:1100px){.content-grid{grid-template-columns:1fr}}
+
+/* SECTION CARD */
+.section-card{background:var(--card);border:1px solid var(--b1);border-radius:13px;overflow:hidden}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--b1);background:var(--bg2)}
+.section-title{font-family:var(--disp);font-size:13px;font-weight:700}
+.badge{padding:2px 10px;border-radius:100px;font-size:10px;font-weight:700;border:1px solid}
+.badge.waiting{color:var(--gold);border-color:rgba(255,214,0,.3);background:rgba(255,214,0,.08)}
+.badge.active{color:var(--cyan);border-color:rgba(0,229,255,.3);background:rgba(0,229,255,.08)}
+.badge.resolved{color:var(--green);border-color:rgba(0,255,135,.3);background:rgba(0,255,135,.08)}
+
+/* RESOLUTION LIST */
+.res-list{padding:12px;display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto}
+.res-list::-webkit-scrollbar{width:3px}.res-list::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+.res-card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:12px 14px;animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.res-card.resolved-win{border-color:rgba(0,255,135,.3)}
+.res-card.resolved-loss{border-color:rgba(255,48,96,.2)}
+.res-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.res-slug{font-size:10px;color:var(--txt2);font-weight:700}
+.res-status{font-size:9px;font-weight:700;letter-spacing:1px;padding:2px 8px;border-radius:4px}
+.res-status.waiting{color:var(--gold);background:rgba(255,214,0,.1)}
+.res-status.resolved{color:var(--green);background:rgba(0,255,135,.1)}
+.res-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.res-item{}
+.res-item-lbl{font-size:8px;color:var(--txt3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
+.res-item-val{font-size:11px;font-weight:700;color:var(--txt)}
+.res-winner{font-size:10px;font-weight:700;margin-top:8px;padding:5px 8px;border-radius:6px;text-align:center}
+.res-winner.up{background:rgba(0,255,135,.1);color:var(--green)}
+.res-winner.down{background:rgba(255,48,96,.1);color:var(--red)}
+
+.empty{text-align:center;padding:36px;color:var(--txt3);font-size:11px;line-height:2}
+.empty-ico{font-size:30px;opacity:.3;margin-bottom:8px}
+
+/* RIGHT PANEL */
+.right-panel{display:flex;flex-direction:column;gap:14px}
+
+/* CONFIG */
+.cfg-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--b1);font-size:10px}
+.cfg-row:last-child{border:none}
+.cfg-key{color:var(--txt3)}.cfg-val{color:var(--cyan);font-weight:700}
+.cfg-body{padding:14px 16px}
+
+/* LOG */
+.log-body{padding:8px;max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.log-body::-webkit-scrollbar{width:3px}.log-body::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+.log-entry{display:grid;grid-template-columns:64px 36px 1fr;gap:6px;align-items:start;padding:5px 6px;border-radius:5px;font-size:9.5px;transition:background .2s;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.log-entry:hover{background:var(--bg2)}
+.log-t{color:var(--txt3);white-space:nowrap}
+.log-l{font-weight:700;font-size:9px}
+.log-l.info{color:var(--cyan)}.log-l.warn{color:var(--gold)}.log-l.error{color:var(--red)}
+.log-m{color:var(--txt2);line-height:1.4}
+
+/* HISTORY */
+.hist-body{padding:10px;display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto}
+.hist-body::-webkit-scrollbar{width:3px}.hist-body::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+.hist-row{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg2);border-radius:7px;border:1px solid var(--b1);font-size:10px}
+.hist-slug{color:var(--txt2);flex:1}
+.hist-res{font-weight:700;padding:2px 8px;border-radius:4px;font-size:9px;margin:0 8px}
+.hist-res.UP{color:var(--green);background:rgba(0,255,135,.1)}
+.hist-res.DOWN{color:var(--red);background:rgba(255,48,96,.1)}
+.hist-pnl{font-weight:700;font-size:11px;min-width:60px;text-align:right}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{padding:10px 16px;border-radius:9px;font-size:10px;font-family:var(--mono);border:1px solid;pointer-events:all;animation:tin .3s ease,tout .3s ease 3.7s forwards}
+@keyframes tin{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+@keyframes tout{from{opacity:1}to{opacity:0}}
+.toast.info{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);color:var(--cyan)}
+.toast.success{background:rgba(0,255,135,.1);border-color:rgba(0,255,135,.3);color:var(--green)}
+.toast.warn{background:rgba(255,214,0,.1);border-color:rgba(255,214,0,.3);color:var(--gold)}
+.toast.error{background:rgba(255,48,96,.1);border-color:rgba(255,48,96,.3);color:var(--red)}
+
+/* OVERLAY */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:9999;transition:opacity .4s}
+#loading.gone{opacity:0;pointer-events:none}
+.spin{width:36px;height:36px;border:2px solid var(--b2);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-title{font-family:var(--disp);font-size:28px;font-weight:800;color:var(--cyan)}
+.load-sub{font-size:10px;letter-spacing:3px;color:var(--txt3)}
+
+/* flicker update */
+@keyframes flick{0%{opacity:.4}50%{opacity:1}100%{opacity:.4}}
+.upd{animation:flick .4s ease}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="load-title">POLYBOT</div>
+  <div class="spin"></div>
+  <div class="load-sub">CONNECTING TO SERVER...</div>
+</div>
+
+<div id="root">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-box">⚡</div>
+    <div>
+      <div class="logo-name">POLYMARKET 5M BOT</div>
+      <div class="logo-sub">BTC · ETH · 5-MINUTE WINDOWS</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <span id="lastScan" style="font-size:9px;color:var(--txt3)">LAST UPDATE: —</span>
+    <div id="modePill" class="pill conn"><div class="dot"></div><span id="modeText">CONNECTING</span></div>
+  </div>
+</header>
+
+<!-- TIMER BAR -->
+<div class="timer-bar-wrap">
+  <div class="timer-bar-fill" id="timerBarFill" style="width:100%"></div>
+</div>
+
+<main>
+
+<!-- CAPITAL STRIP -->
+<div class="cap-row">
+  <div class="cap-card c1">
+    <div class="cap-lbl">AVAILABLE CAPITAL</div>
+    <div class="cap-val" id="capital" style="color:var(--cyan)">$—</div>
+    <div class="cap-sub" id="capitalSub">Starting: $—</div>
+  </div>
+  <div class="cap-card c2">
+    <div class="cap-lbl">TOTAL INVESTED</div>
+    <div class="cap-val" id="invested" style="color:var(--gold)">$—</div>
+    <div class="cap-sub">across all windows</div>
+  </div>
+  <div class="cap-card c3">
+    <div class="cap-lbl">TOTAL P&L</div>
+    <div class="cap-val" id="totalPnl">$—</div>
+    <div class="cap-sub" id="totalReturn">Return: —%</div>
+  </div>
+  <div class="cap-card c4">
+    <div class="cap-lbl">WIN RATE</div>
+    <div class="cap-val" id="winRate" style="color:var(--purp)">—%</div>
+    <div class="cap-sub" id="wl">W: — / L: —</div>
+  </div>
+  <div class="cap-card c5">
+    <div class="cap-lbl">WAITING RESOLUTION</div>
+    <div class="cap-val" id="waitingCount" style="color:var(--purp)">—</div>
+    <div class="cap-sub">windows pending</div>
+  </div>
+  <div class="cap-card c6">
+    <div class="cap-lbl">WINDOW COUNTDOWN</div>
+    <div class="cap-val" id="countdown" style="color:var(--orng)">—:——</div>
+    <div class="cap-sub" id="windowStatus">—</div>
+  </div>
+</div>
+
+<!-- ACTIVE WINDOWS (BTC + ETH side by side) -->
+<div class="countdown-row" id="activeWindowsRow">
+  <!-- injected by JS -->
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="content-grid">
+
+  <!-- LEFT: Waiting for Resolution -->
+  <div>
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-title">⏳ WAITING FOR RESOLUTION</div>
+        <div class="badge waiting" id="waitingBadge">0 windows</div>
+      </div>
+      <div class="res-list" id="waitingList">
+        <div class="empty"><div class="empty-ico">🕐</div>No windows waiting yet.<br/>They appear here after each 5-minute window closes.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- Bot Config -->
+    <div class="section-card">
+      <div class="section-header"><div class="section-title">BOT CONFIG</div></div>
+      <div class="cfg-body">
+        <div class="cfg-row"><span class="cfg-key">UP BUY INTERVAL</span><span class="cfg-val">Every 10s</span></div>
+        <div class="cfg-row"><span class="cfg-key">UP SHARES / BUY</span><span class="cfg-val">20 shares</span></div>
+        <div class="cfg-row"><span class="cfg-key">DOWN BUY INTERVAL</span><span class="cfg-val">Every 20s</span></div>
+        <div class="cfg-row"><span class="cfg-key">DOWN SHARES / BUY</span><span class="cfg-val">40 shares</span></div>
+        <div class="cfg-row"><span class="cfg-key">STOP BUYING AT</span><span class="cfg-val">4:40 of window</span></div>
+        <div class="cfg-row"><span class="cfg-key">TAKE PROFIT</span><span class="cfg-val">0.99</span></div>
+        <div class="cfg-row"><span class="cfg-key">WINDOW SIZE</span><span class="cfg-val">5 minutes</span></div>
+        <div class="cfg-row"><span class="cfg-key">MARKETS</span><span class="cfg-val">BTC + ETH</span></div>
+        <div class="cfg-row"><span class="cfg-key">MODE</span><span class="cfg-val" id="cfgMode">—</span></div>
+        <div class="cfg-row"><span class="cfg-key">CURRENT SLUG TS</span><span class="cfg-val" id="cfgTs">—</span></div>
+      </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-title">ACTIVITY LOG</div>
+        <div class="badge active" id="logBadge">0</div>
+      </div>
+      <div class="log-body" id="logBody">
+        <div style="text-align:center;padding:20px;color:var(--txt3);font-size:10px">Waiting for activity...</div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-title">RESOLVED HISTORY</div>
+        <div class="badge resolved" id="histBadge">0</div>
+      </div>
+      <div class="hist-body" id="histBody">
+        <div style="text-align:center;padding:20px;color:var(--txt3);font-size:10px">No resolved windows yet</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+</div>
+<div id="toast"></div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let S = null;
+let ws = null;
+let timerTick = null;
+
+// ─── WS ───────────────────────────────────────────────────────────────────────
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}`);
+  ws.onopen  = () => { setMode('connected'); hideLoading(); };
+  ws.onclose = () => { setMode('connecting'); setTimeout(connect, 2500); };
+  ws.onerror = () => setMode('connecting');
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'FULL_STATE' || msg.type === 'STATE_UPDATE') { S = msg.data; render(); }
+      if (msg.type === 'LOG') { if (S) { S.logs = S.logs || []; S.logs.unshift(msg.data); renderLog(); } }
+      if (msg.type === 'PRICES') { if (S) { S.prices = S.prices || {}; S.prices[msg.data.asset] = msg.data; renderPrices(); } }
+    } catch(e) {}
+  };
+}
+
+// ─── MAIN RENDER ─────────────────────────────────────────────────────────────
+function render() {
+  if (!S) return;
+  renderCapital();
+  renderActiveWindows();
+  renderWaiting();
+  renderLog();
+  renderHistory();
+  renderConfig();
+  document.getElementById('lastScan').textContent = 'LAST UPDATE: ' + new Date(S.timestamp).toLocaleTimeString();
+}
+
+function fmt(n, d=2) {
+  return Number(n).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function pSign(n) { return n >= 0 ? '+' : ''; }
+function pColor(n) { return n > 0 ? 'var(--green)' : n < 0 ? 'var(--red)' : 'var(--txt2)'; }
+
+function setEl(id, val, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = val;
+  if (color) el.style.color = color;
+  el.classList.remove('upd'); void el.offsetWidth; el.classList.add('upd');
+}
+
+// ─── CAPITAL ─────────────────────────────────────────────────────────────────
+function renderCapital() {
+  setEl('capital',     `$${fmt(S.capital)}`);
+  document.getElementById('capitalSub').textContent = `Starting: $${fmt(S.startCapital)}`;
+  setEl('invested',    `$${fmt(S.totalInvested)}`);
+  setEl('totalPnl',   `${pSign(S.totalPnl)}$${fmt(S.totalPnl)}`, pColor(S.totalPnl));
+  document.getElementById('totalReturn').textContent = `Return: ${pSign(S.totalReturn)}${fmt(S.totalReturn)}%`;
+  setEl('winRate',     `${S.winRate}%`);
+  document.getElementById('wl').textContent = `W: ${S.wins} / L: ${S.losses}`;
+  setEl('waitingCount', S.waitingResolution?.length ?? 0);
+}
+
+// ─── COUNTDOWN ───────────────────────────────────────────────────────────────
+function updateCountdown() {
+  if (!S) return;
+  // Compute locally for smooth update
+  const nowSec  = Math.floor(Date.now() / 1000);
+  const winTs   = Math.floor(Math.floor(nowSec) / 300) * 300;
+  const secIn   = nowSec - winTs;
+  const secLeft = Math.max(0, 300 - secIn);
+  const m = Math.floor(secLeft / 60);
+  const s = secLeft % 60;
+  const stopped = secIn >= 280;
+  const danger  = secLeft <= 30;
+  const warn    = secLeft <= 60;
+
+  const timeStr = `${m}:${String(s).padStart(2,'0')}`;
+  const el = document.getElementById('countdown');
+  if (el) {
+    el.textContent = timeStr;
+    el.style.color = danger ? 'var(--red)' : warn ? 'var(--gold)' : 'var(--orng)';
+  }
+
+  const statusEl = document.getElementById('windowStatus');
+  if (statusEl) {
+    statusEl.textContent = stopped
+      ? (secIn >= 300 ? 'Window ended' : 'Buying stopped at 4:40')
+      : `${secIn}s into window`;
+  }
+
+  // Timer bar
+  const pct = (secLeft / 300) * 100;
+  const bar = document.getElementById('timerBarFill');
+  if (bar) {
+    bar.style.width = pct + '%';
+    bar.className = 'timer-bar-fill' + (danger ? ' timer-bar-danger' : '');
+  }
+}
+
+setInterval(updateCountdown, 500);
+
+// ─── PRICES ───────────────────────────────────────────────────────────────────
+function renderPrices() {
+  if (!S?.prices) return;
+  // Update price boxes inside active window cards
+  for (const [asset, priceData] of Object.entries(S.prices)) {
+    const upEl   = document.getElementById(`price-up-${asset}`);
+    const downEl = document.getElementById(`price-down-${asset}`);
+    if (upEl)   { upEl.textContent   = priceData.up   != null ? priceData.up.toFixed(4)   : '—'; }
+    if (downEl) { downEl.textContent = priceData.down != null ? priceData.down.toFixed(4) : '—'; }
+  }
+}
+
+// ─── ACTIVE WINDOWS ───────────────────────────────────────────────────────────
+function renderActiveWindows() {
+  const container = document.getElementById('activeWindowsRow');
+  const assets = ['btc', 'eth'];
+  container.innerHTML = assets.map(asset => {
+    const win    = S.activeWindows?.[asset];
+    const prices = S.prices?.[asset];
+    return renderWindowCard(asset, win, prices);
+  }).join('');
+}
+
+function renderWindowCard(asset, win, prices) {
+  const upPrice   = prices?.up   != null ? prices.up.toFixed(4)   : '—';
+  const downPrice = prices?.down != null ? prices.down.toFixed(4) : '—';
+  const liveTag   = prices?.live === false ? ' (demo)' : '';
+
+  const upShares   = win?.up?.totalShares   ?? 0;
+  const downShares = win?.down?.totalShares ?? 0;
+  const upAvg      = win?.up?.avgPrice      ?? 0;
+  const downAvg    = win?.down?.avgPrice    ?? 0;
+  const upCost     = win?.up?.totalCost     ?? 0;
+  const downCost   = win?.down?.totalCost   ?? 0;
+  const upOrders   = win?.up?.orders?.length  ?? 0;
+  const downOrders = win?.down?.orders?.length ?? 0;
+
+  const stopped    = S.stoppedBuying;
+  const slug       = win?.slug ?? makeSlugLocal(asset);
+
+  return `
+<div class="countdown-card">
+  <div class="countdown-header">
+    <div class="countdown-title">
+      <div class="asset-badge ${asset}">${asset.toUpperCase()}</div>
+      <span style="font-size:10px;color:var(--txt3);font-weight:400">${slug}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font-size:9px;color:${prices?.live===false?'var(--gold)':'var(--green)'}">● ${prices?.live===false?'DEMO':'LIVE'}${liveTag}</div>
+      ${win ? `<div style="font-size:9px;color:var(--txt3)">${win.status}</div>` : '<div style="font-size:9px;color:var(--txt3)">WAITING...</div>'}
+    </div>
+  </div>
+
+  <!-- LIVE PRICES -->
+  <div class="price-row">
+    <div class="price-box">
+      <div class="price-dir up">▲ UP</div>
+      <div class="price-num up" id="price-up-${asset}">${upPrice}</div>
+      <div class="price-change">Live market price</div>
+    </div>
+    <div class="price-box">
+      <div class="price-dir down">▼ DOWN</div>
+      <div class="price-num down" id="price-down-${asset}">${downPrice}</div>
+      <div class="price-change">Live market price</div>
+    </div>
+  </div>
+
+  <!-- SHARES ACCUMULATED -->
+  <div class="shares-section">
+    <div class="shares-row">
+      <div class="shares-leg up-leg">
+        <div class="leg-title up">▲ UP POSITION</div>
+        <div class="leg-stat"><span class="leg-key">TOTAL SHARES</span><span class="leg-val green">${upShares.toLocaleString()}</span></div>
+        <div class="leg-stat"><span class="leg-key">AVG BUY PRICE</span><span class="leg-val">${upAvg > 0 ? upAvg.toFixed(4) : '—'}</span></div>
+        <div class="leg-stat"><span class="leg-key">TOTAL COST</span><span class="leg-val">$${upCost.toFixed(2)}</span></div>
+        <div class="leg-stat"><span class="leg-key">ORDERS PLACED</span><span class="leg-val">${upOrders}</span></div>
+        <div class="leg-stat"><span class="leg-key">TP VALUE (@0.99)</span><span class="leg-val green">${upShares > 0 ? '$'+(upShares*0.99).toFixed(2) : '—'}</span></div>
+      </div>
+      <div class="shares-leg down-leg">
+        <div class="leg-title down">▼ DOWN POSITION</div>
+        <div class="leg-stat"><span class="leg-key">TOTAL SHARES</span><span class="leg-val red">${downShares.toLocaleString()}</span></div>
+        <div class="leg-stat"><span class="leg-key">AVG BUY PRICE</span><span class="leg-val">${downAvg > 0 ? downAvg.toFixed(4) : '—'}</span></div>
+        <div class="leg-stat"><span class="leg-key">TOTAL COST</span><span class="leg-val">$${downCost.toFixed(2)}</span></div>
+        <div class="leg-stat"><span class="leg-key">ORDERS PLACED</span><span class="leg-val">${downOrders}</span></div>
+        <div class="leg-stat"><span class="leg-key">TP VALUE (@0.99)</span><span class="leg-val red">${downShares > 0 ? '$'+(downShares*0.99).toFixed(2) : '—'}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER BADGES -->
+  <div class="order-badges">
+    <span class="ob up">▲ ${upOrders} UP orders · every 10s · 20 shares</span>
+    <span class="ob down">▼ ${downOrders} DOWN orders · every 20s · 40 shares</span>
+  </div>
+
+  <!-- BUY STATUS -->
+  <div class="buy-status">
+    <div class="buy-dot ${stopped ? 'stopped' : ''}"></div>
+    <span>${stopped ? '🔴 BUYING STOPPED (past 4:40)' : '🟢 ACTIVELY BUYING — stops at 4:40'}</span>
+  </div>
+</div>`;
+}
+
+function makeSlugLocal(asset) {
+  const ts = Math.floor(Math.floor(Date.now() / 1000) / 300) * 300;
+  return `${asset}-updown-5m-${ts}`;
+}
+
+// ─── WAITING FOR RESOLUTION ───────────────────────────────────────────────────
+function renderWaiting() {
+  const list = document.getElementById('waitingList');
+  const badge = document.getElementById('waitingBadge');
+  const items = S.waitingResolution ?? [];
+  badge.textContent = `${items.length} window${items.length !== 1 ? 's' : ''}`;
+
+  if (items.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="empty-ico">🕐</div>No windows waiting yet.<br/>They appear here after each 5-minute window closes.</div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(w => {
+    const upCost   = w.up?.totalCost   ?? 0;
+    const downCost = w.down?.totalCost ?? 0;
+    return `
+<div class="res-card">
+  <div class="res-top">
+    <div class="res-slug">${w.slug}</div>
+    <div class="res-status waiting">AWAITING RESULT</div>
+  </div>
+  <div class="res-meta">
+    <div class="res-item">
+      <div class="res-item-lbl">▲ UP SHARES</div>
+      <div class="res-item-val" style="color:var(--green)">${(w.up?.totalShares??0).toLocaleString()}</div>
+    </div>
+    <div class="res-item">
+      <div class="res-item-lbl">▲ UP AVG</div>
+      <div class="res-item-val">${w.up?.avgPrice > 0 ? w.up.avgPrice.toFixed(4) : '—'}</div>
+    </div>
+    <div class="res-item">
+      <div class="res-item-lbl">▼ DOWN SHARES</div>
+      <div class="res-item-val" style="color:var(--red)">${(w.down?.totalShares??0).toLocaleString()}</div>
+    </div>
+    <div class="res-item">
+      <div class="res-item-lbl">▼ DOWN AVG</div>
+      <div class="res-item-val">${w.down?.avgPrice > 0 ? w.down.avgPrice.toFixed(4) : '—'}</div>
+    </div>
+    <div class="res-item">
+      <div class="res-item-lbl">UP COST</div>
+      <div class="res-item-val">$${upCost.toFixed(2)}</div>
+    </div>
+    <div class="res-item">
+      <div class="res-item-lbl">DOWN COST</div>
+      <div class="res-item-val">$${downCost.toFixed(2)}</div>
+    </div>
+    <div class="res-item">
+      <div class="res-item-lbl">TOTAL COST</div>
+      <div class="res-item-val">$${(upCost+downCost).toFixed(2)}</div>
+    </div>
+    <div class="res-item">
+      <div class="res-item-lbl">ASSET</div>
+      <div class="res-item-val">${w.asset?.toUpperCase()}</div>
+    </div>
+  </div>
+  <div style="font-size:9px;color:var(--txt3);margin-top:8px">Window ended ${new Date(w.openedAt).toLocaleTimeString()} — checking Polymarket for result...</div>
+</div>`;
+  }).join('');
+}
+
+// ─── LOG ─────────────────────────────────────────────────────────────────────
+function renderLog() {
+  if (!S?.logs) return;
+  const body  = document.getElementById('logBody');
+  const badge = document.getElementById('logBadge');
+  const logs  = S.logs.slice(0, 60);
+  badge.textContent = logs.length;
+  if (logs.length === 0) { body.innerHTML = `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:10px">No activity yet</div>`; return; }
+  body.innerHTML = logs.map(e => {
+    const t = new Date(e.ts).toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    return `<div class="log-entry"><span class="log-t">${t}</span><span class="log-l ${e.level}">${e.level.toUpperCase()}</span><span class="log-m">${e.msg}</span></div>`;
+  }).join('');
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const body  = document.getElementById('histBody');
+  const badge = document.getElementById('histBadge');
+  const hist  = (S.history ?? []).slice().reverse();
+  badge.textContent = hist.length;
+  if (hist.length === 0) { body.innerHTML = `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:10px">No resolved windows yet</div>`; return; }
+  body.innerHTML = hist.slice(0,20).map(w => {
+    const pnlColor = w.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<div class="hist-row">
+      <span class="hist-slug">${w.slug}</span>
+      <span class="hist-res ${w.resolution}">${w.resolution ?? '?'}</span>
+      <span class="hist-pnl" style="color:${pnlColor}">${pSign(w.pnl)}$${fmt(w.pnl)}</span>
+    </div>`;
+  }).join('');
+}
+
+function pSign(n) { return n >= 0 ? '+' : ''; }
+
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+function renderConfig() {
+  const cfgMode = document.getElementById('cfgMode');
+  const cfgTs   = document.getElementById('cfgTs');
+  if (cfgMode) { cfgMode.textContent = S.demoMode ? 'DEMO' : 'LIVE'; cfgMode.style.color = S.demoMode ? 'var(--gold)' : 'var(--red)'; }
+  if (cfgTs)   cfgTs.textContent = S.currentTs ?? '—';
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function setMode(mode) {
+  const pill = document.getElementById('modePill');
+  const txt  = document.getElementById('modeText');
+  if (!pill) return;
+  if (mode === 'connected') {
+    const isDemo = S?.demoMode !== false;
+    pill.className = `pill ${isDemo ? 'demo' : 'live'}`;
+    txt.textContent = isDemo ? 'DEMO MODE' : 'LIVE';
+  } else {
+    pill.className = 'pill conn';
+    txt.textContent = 'CONNECTING';
+  }
+}
+
+function hideLoading() {
+  const el = document.getElementById('loading');
+  if (el) { el.classList.add('gone'); setTimeout(() => el.style.display='none', 400); }
+}
+
+function showToast(type, msg) {
+  const wrap = document.getElementById('toast');
+  const el   = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 4100);
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+connect();
+setTimeout(async () => {
+  if (!S) {
+    try {
+      const r = await fetch('/api/state');
+      S = await r.json();
+      render();
+      hideLoading();
+    } catch(e) {}
+  }
+}, 2000);
+</script>
+</body>
+</html>

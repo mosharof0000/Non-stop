@@ -13,7 +13,7 @@ const cors = require('cors');
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
 const CONFIG = {
   DEMO_MODE:        process.env.DEMO_MODE !== 'false',
-  DEMO_CAPITAL:     parseFloat(process.env.DEMO_CAPITAL || 1000),
+  DEMO_CAPITAL:     parseFloat(process.env.DEMO_CAPITAL || 2000),
   POLYMARKET_KEY:   process.env.POLYMARKET_API_KEY || '',
   GAMMA_URL:        'https://gamma-api.polymarket.com',
   CLOB_URL:         'https://clob.polymarket.com',
@@ -143,15 +143,19 @@ async function fetchLivePrices(asset) {
       return null;
     }
 
-    // Parse outcome prices — Polymarket returns outcomes as ["Up","Down"] with outcomePrices
-    const outcomes  = market.outcomes || [];
-    const prices    = market.outcomePrices || [];
+    // Parse outcome prices — Polymarket sometimes returns outcomes as a JSON string not an array
+    const outcomes = typeof market.outcomes === 'string'
+      ? JSON.parse(market.outcomes)
+      : (market.outcomes || []);
+    const prices = typeof market.outcomePrices === 'string'
+      ? JSON.parse(market.outcomePrices)
+      : (market.outcomePrices || []);
 
     let upPrice   = null;
     let downPrice = null;
 
     outcomes.forEach((o, i) => {
-      const name = o.toLowerCase();
+      const name = (o || '').toLowerCase();
       if (name === 'up')   upPrice   = parseFloat(prices[i]);
       if (name === 'down') downPrice = parseFloat(prices[i]);
     });
@@ -205,8 +209,12 @@ async function checkResolution(slug) {
     // Market resolved when closed=true and there's a winner
     if (!market.closed && !market.resolved) return null;
 
-    const outcomes = market.outcomes || [];
-    const prices   = market.outcomePrices || [];
+    const outcomes = typeof market.outcomes === 'string'
+      ? JSON.parse(market.outcomes)
+      : (market.outcomes || []);
+    const prices = typeof market.outcomePrices === 'string'
+      ? JSON.parse(market.outcomePrices)
+      : (market.outcomePrices || []);
 
     // Winner = outcome whose price resolved to 1.0
     for (let i = 0; i < outcomes.length; i++) {
@@ -440,11 +448,12 @@ async function checkAllResolutions() {
     const winLeg  = win[result.toLowerCase()];
     const loseLeg = win[result === 'UP' ? 'down' : 'up'];
 
-    // Winning side gets paid at 1.0 (resolution)
-    const winReturn = winLeg.totalShares * 1.0;
-    const lossCost  = loseLeg.totalCost; // losing side worthless
+    // Winning side gets paid at 1.0 per share (resolution)
+    // PnL = what winning side returns - total spent on BOTH sides
+    const winReturn  = winLeg.totalShares * 1.0;
+    const totalSpent = winLeg.totalCost + loseLeg.totalCost;
 
-    win.pnl = winReturn - winLeg.totalCost - lossCost;
+    win.pnl = winReturn - totalSpent;
     state.capital += winReturn;
 
     log('info', `✅ RESOLVED ${win.asset.toUpperCase()} → ${result} | PnL: ${win.pnl >= 0 ? '+' : ''}$${win.pnl.toFixed(2)}`, {
@@ -491,8 +500,9 @@ function startMainLoop() {
         continue;
       }
 
-      // Past 4:40 → stop buying (intervals already guard this, but log once)
-      if (sec >= CONFIG.STOP_BUYING_SEC && win.status === 'BUYING') {
+      // Past 4:40 → stop buying (intervals already guard this, log only once)
+      if (sec >= CONFIG.STOP_BUYING_SEC && win.status === 'BUYING' && !win._loggedStop) {
+        win._loggedStop = true;
         log('info', `⏱ ${asset.toUpperCase()} past 4:40 — no more buys this window`);
       }
 
